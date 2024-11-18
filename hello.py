@@ -1,6 +1,8 @@
 import can
 import time
 import threading
+import numpy as np
+import cv2
 
 class CanController:
     def __init__(self) -> None:
@@ -38,8 +40,55 @@ class CanController:
                     break
             time.sleep(0.05)
 
+def rotate_image(image, angle):
+    (h, w) = image.shape[:2]
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, -angle, 1.0)
+    rotated = cv2.warpAffine(image, M, (w, h))
+    return rotated
+
+def display_values(speed, throttle, brake, steer, steering_wheel_img):
+    img = np.zeros((400, 600, 3), dtype=np.uint8)
+    cv2.putText(img, f"Speed: {speed:.2f} m/s", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    cv2.putText(img, f"Throttle: {throttle:.2f} %", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    cv2.putText(img, f"Brake: {brake:.2f} %", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    cv2.putText(img, f"Steering: {steer:.2f} deg", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    
+    # Draw throttle bar
+    throttle_width = int(throttle * 2)  # Scale throttle to fit in the bar
+    cv2.rectangle(img, (50, 270), (50 + throttle_width, 290), (0, 255, 0), -1)
+    cv2.putText(img, "Throttle", (50, 265), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+    # Draw brake bar
+    brake_width = int(brake * 2)  # Scale brake to fit in the bar
+    cv2.rectangle(img, (50, 320), (50 + brake_width, 340), (0, 0, 255), -1)
+    cv2.putText(img, "Brake", (50, 315), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+    # Resize and draw steering wheel
+    steering_wheel_img = cv2.resize(steering_wheel_img, (100, 100))
+    rotated_steering_wheel = rotate_image(steering_wheel_img, -steer)
+    x_offset = 400
+    y_offset = 100
+    y1, y2 = y_offset, y_offset + rotated_steering_wheel.shape[0]
+    x1, x2 = x_offset, x_offset + rotated_steering_wheel.shape[1]
+
+    alpha_s = rotated_steering_wheel[:, :, 2] / 255.0
+    alpha_l = 1.0 - alpha_s
+
+    for c in range(0, 3):
+        img[y1:y2, x1:x2, c] = (alpha_s * rotated_steering_wheel[:, :, c] +
+                                alpha_l * img[y1:y2, x1:x2, c])
+
+    cv2.imshow("Vehicle Data", img)
+    cv2.waitKey(1)
+
 def main():
     controller = CanController()
+    steering_wheel_img = cv2.imread("steering.jpg")
+    speed = 0.0
+    throttle = 0.0
+    brake = 0.0
+    steer = 0.0
 
     try:
         while True:
@@ -68,6 +117,8 @@ def main():
                 steer = int.from_bytes(report_steer[3:5], 'big') - 500
                 print(f"Steering: {steer} deg")
 
+            # Display vehicle data
+            display_values(speed, throttle, brake, steer, steering_wheel_img)
             time.sleep(0.1)
     except KeyboardInterrupt:
         controller.close()
