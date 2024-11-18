@@ -43,6 +43,31 @@ def main():
 
     try:
         while True:
+            # 現在速度・アクセル・ブレーキ・ステアリングの値をprint
+            received_data = controller.message_received
+            if 0x505 in received_data:
+                report_vcu = received_data[0x505]
+                # speed_raw = (report_vcu[2] << 8) + report_vcu[3]
+                # speed_raw_signed = -((speed_raw ^ 0xFFFF) + 1) if report_vcu[2] & 0x80 else speed_raw
+                # speed = speed_raw_signed / 1000.0 # m/s
+                speed = int.from_bytes(report_vcu[2:4], 'big', signed=True) / 1000.0
+                print(f"Speed: {speed} m/s")
+            if 0x500 in received_data:
+                report_throttle = received_data[0x500]
+                # throttle = ((report_throttle[3] << 8) + report_throttle[4]) / 10.0 # %
+                throttle = int.from_bytes(report_throttle[3:5], 'big') / 10.0
+                print(f"Throttle: {throttle} %")
+            if 0x501 in received_data:
+                report_brake = received_data[0x501]
+                # brake = ((report_brake[3] << 8) + report_brake[4]) / 10.0
+                brake = int.from_bytes(report_brake[3:5], 'big') / 10.0
+                print(f"Brake: {brake} %")
+            if 0x502 in received_data:
+                report_steer = received_data[0x502]
+                # steer = ((report_steer[3] << 8) + report_steer[4]) - 500
+                steer = int.from_bytes(report_steer[3:5], 'big') - 500
+                print(f"Steering: {steer} deg")
+
             time.sleep(0.1)
     except KeyboardInterrupt:
         controller.close()
