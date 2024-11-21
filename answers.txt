@@ -1,0 +1,11 @@
+# debug_1
+
+Drive_ThrottlePedalActual: 23 %
+Brake_PedalActual: 89 %
+Steer_AngleActual: 123 deg
+
+# debug_2
+
+Drive_ThrottlePedalActual: 99.9 %
+Brake_PedalActual: 2.1 %
+Steer_AngleActual: -10 deg
